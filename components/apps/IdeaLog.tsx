@@ -18,11 +18,16 @@ const IdeaLog: React.FC<IdeaLogProps> = ({ onIdeaDigested }) => {
     setLogs(prev => [...prev.slice(-3), `> ${msg}`]);
   };
 
-  const addIdea = async () => {
+  const addIdea = async (ingest: boolean = true) => {
     if (!newInput.trim()) return;
     setLoading(true);
     setError(null);
-    addLog(`Ingesting: ${newInput.substring(0, 15)}...`);
+
+    if (ingest) {
+      addLog(`Ingesting: ${newInput.substring(0, 15)}...`);
+    } else {
+      addLog(`Saving: ${newInput.substring(0, 15)}...`);
+    }
 
     const isUrl = /^(http|https):\/\/[^ "]+$/.test(newInput.trim());
     const newIdea: ContentIdea = {
@@ -34,24 +39,29 @@ const IdeaLog: React.FC<IdeaLogProps> = ({ onIdeaDigested }) => {
     };
 
     try {
-      if (isUrl) {
-        addLog('Requesting Gemini Tools...');
-        const transcript = await scrapeAndTranscribe(newInput.trim());
-        newIdea.transcript = transcript;
-        newIdea.status = 'digested';
-        addLog('Source Digested.');
+      if (ingest) {
+        if (isUrl) {
+          addLog('Requesting Gemini Tools...');
+          const transcript = await scrapeAndTranscribe(newInput.trim());
+          newIdea.transcript = transcript;
+          newIdea.status = 'digested';
+          addLog('Source Digested.');
+        } else {
+          addLog('Capturing Riff...');
+          // For riffs text is the content, so we consider it digested if ingested
+          newIdea.status = 'digested';
+          addLog('Riff Committed.');
+        }
       } else {
-        addLog('Capturing Riff...');
-        newIdea.status = 'digested';
-        addLog('Riff Committed.');
+        addLog('Idea Saved to Vault.');
       }
-      
+
       const saved = localStorage.getItem('retro_content_ideas');
       const ideas = saved ? JSON.parse(saved) : [];
       const updatedIdeas = [newIdea, ...ideas];
       localStorage.setItem('retro_content_ideas', JSON.stringify(updatedIdeas));
-      
-      if (onIdeaDigested) onIdeaDigested(newIdea);
+
+      if (ingest && onIdeaDigested) onIdeaDigested(newIdea);
       setNewInput('');
       addLog('Ready.');
     } catch (e: any) {
@@ -67,11 +77,11 @@ const IdeaLog: React.FC<IdeaLogProps> = ({ onIdeaDigested }) => {
       <div className="flex items-center justify-between">
         <h3 className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em]">Capture Terminal</h3>
         <div className="flex items-center gap-2">
-           <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></div>
-           <span className="text-[8px] font-bold text-slate-500 uppercase">ACTIVE</span>
+          <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></div>
+          <span className="text-[8px] font-bold text-slate-500 uppercase">ACTIVE</span>
         </div>
       </div>
-      
+
       <div className="relative group">
         <textarea
           value={newInput}
@@ -79,7 +89,7 @@ const IdeaLog: React.FC<IdeaLogProps> = ({ onIdeaDigested }) => {
             setNewInput(e.target.value);
             if (error) setError(null);
           }}
-          onKeyDown={(e) => handleShiftEnter(e, addIdea)}
+          onKeyDown={(e) => handleShiftEnter(e, () => addIdea(true))}
           disabled={loading}
           className={`w-full p-3 bg-black border ${error ? 'border-red-500/50' : 'border-slate-800'} rounded-lg text-xs min-h-[160px] focus:border-blue-500 outline-none transition-all placeholder-slate-900 custom-scrollbar font-mono text-blue-400/90 shadow-inner resize-none`}
           placeholder="[ ENTER URL OR RIFF ]"
@@ -106,20 +116,32 @@ const IdeaLog: React.FC<IdeaLogProps> = ({ onIdeaDigested }) => {
         </div>
       )}
 
-      <button 
-        onClick={addIdea}
-        disabled={loading || !newInput.trim()}
-        className={`relative overflow-hidden w-full h-12 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white font-black rounded-lg text-[10px] transition-all shadow-xl uppercase tracking-[0.2em] group`}
-      >
-        {loading && (
-          <div className="absolute inset-0 bg-blue-400/20">
-             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-full h-full animate-progress-slide"></div>
-          </div>
-        )}
-        <span className="relative z-10">
-          {loading ? 'EXECUTING...' : 'EXECUTE INGESTION'}
-        </span>
-      </button>
+      <div className="flex gap-3">
+        <button
+          onClick={() => addIdea(false)}
+          disabled={loading || !newInput.trim()}
+          className={`relative overflow-hidden w-1/2 h-12 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-600/50 disabled:opacity-50 text-amber-500 font-bold rounded-lg text-[10px] transition-all shadow-lg uppercase tracking-[0.2em] group`}
+        >
+          <span className="relative z-10 group-hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+            Save Idea
+          </span>
+        </button>
+
+        <button
+          onClick={() => addIdea(true)}
+          disabled={loading || !newInput.trim()}
+          className={`relative overflow-hidden w-1/2 h-12 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white font-black rounded-lg text-[10px] transition-all shadow-xl uppercase tracking-[0.2em] group`}
+        >
+          {loading && (
+            <div className="absolute inset-0 bg-blue-400/20">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-full h-full animate-progress-slide"></div>
+            </div>
+          )}
+          <span className="relative z-10">
+            {loading ? 'EXECUTING...' : 'EXECUTE INGESTION'}
+          </span>
+        </button>
+      </div>
     </div>
   );
 };

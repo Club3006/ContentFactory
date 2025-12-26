@@ -16,7 +16,7 @@ const Window: React.FC<WindowProps> = ({ title, children, onClose, onFocus, zInd
   const [size, setSize] = useState({ width: 500, height: 600 });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  
+
   const dragStartPos = useRef({ x: 0, y: 0 });
   const resizeStartSize = useRef({ width: 0, height: 0 });
   const resizeStartPos = useRef({ x: 0, y: 0 });
@@ -42,7 +42,7 @@ const Window: React.FC<WindowProps> = ({ title, children, onClose, onFocus, zInd
       if (isDragging) {
         setPos({
           x: e.clientX - dragStartPos.current.x,
-          y: e.clientY - dragStartPos.current.y,
+          y: Math.max(14, e.clientY - dragStartPos.current.y),
         });
       }
       if (isResizing) {
@@ -71,12 +71,12 @@ const Window: React.FC<WindowProps> = ({ title, children, onClose, onFocus, zInd
   }, [isDragging, isResizing]);
 
   return (
-    <div 
+    <div
       onClick={onFocus}
       className={`absolute slick-window flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-300 ${isDragging ? 'opacity-80 scale-[1.01]' : ''}`}
-      style={{ 
-        zIndex, 
-        top: pos.y, 
+      style={{
+        zIndex,
+        top: pos.y,
         left: pos.x,
         width: size.width,
         height: isMinimized ? '44px' : size.height,
@@ -84,7 +84,7 @@ const Window: React.FC<WindowProps> = ({ title, children, onClose, onFocus, zInd
       }}
     >
       {/* Header */}
-      <div 
+      <div
         onMouseDown={handleMouseDown}
         className="flex items-center justify-between px-4 py-3 bg-[#1e293b]/40 border-b border-white/5 cursor-grab active:cursor-grabbing select-none shrink-0"
       >
@@ -103,8 +103,8 @@ const Window: React.FC<WindowProps> = ({ title, children, onClose, onFocus, zInd
           <div className="h-full overflow-y-auto p-4 custom-scrollbar">
             {children}
           </div>
-          
-          <div 
+
+          <div
             onMouseDown={handleResizeDown}
             className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize flex items-end justify-end p-1 z-50 opacity-20 hover:opacity-100"
           >
