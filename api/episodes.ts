@@ -14,6 +14,7 @@ interface UpdateEpisodeInput {
     title: string;
     guest?: string;
     episodeNumber: string;
+    transcriptText?: string;
 }
 
 export const fetchAndProcessEpisode = async (input: FetchEpisodeInput): Promise<Episode> => {
@@ -59,10 +60,14 @@ export const fetchAndProcessEpisode = async (input: FetchEpisodeInput): Promise<
 };
 
 export const updateEpisodeMetadata = async (input: UpdateEpisodeInput): Promise<void> => {
-    await db.episodes.update(input.id, {
+    const updateData: any = {
         title: input.title,
         guest: input.guest,
         episodeNumber: input.episodeNumber,
         updatedAt: new Date()
-    });
+    };
+    if (input.transcriptText) {
+        updateData.transcriptText = input.transcriptText;
+    }
+    await db.episodes.update(input.id, updateData);
 };

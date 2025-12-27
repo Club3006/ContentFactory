@@ -3,11 +3,13 @@ import { AppType, WindowState, ContentIdea } from './types';
 import Window from './components/Window';
 import IdeaLog from './components/apps/IdeaLog';
 import ContentLab from './components/apps/ContentLab';
-import ChatBot from './components/apps/ChatBot';
 import Settings from './components/apps/Settings';
 import IdeaDetail from './components/apps/IdeaDetail';
 import Library from './components/apps/Library';
-import { PodcastManager } from './components/apps/PodcastManager';
+import { PodcastProducer } from './components/apps/PodcastProducer';
+import { PodcastLibrary } from './components/apps/PodcastLibrary';
+import { PodcastDetail } from './components/apps/PodcastDetail';
+import { PodcastTranscript } from './components/apps/PodcastTranscript';
 
 const App: React.FC = () => {
   const [windows, setWindows] = useState<WindowState[]>([]);
@@ -15,11 +17,9 @@ const App: React.FC = () => {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Initial Boot Sequence
+  // Initial Boot Sequence (Empty)
   useEffect(() => {
-    setTimeout(() => {
-      openApp('chatbot', 'Neural Assistant', null, 400, 100);
-    }, 500);
+    // Neural Assistant Removed
   }, []);
 
   // Command Palette Listener
@@ -81,9 +81,8 @@ const App: React.FC = () => {
     { type: 'idea-log', name: 'Idea Capture', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5' },
     { type: 'library', name: 'Vault', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
     { type: 'content-lab', name: 'Generator', icon: 'M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 011 1V4z' },
-    { type: 'chatbot', name: 'Assistant', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
     { type: 'settings', name: 'Persona', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' },
-    { type: 'podcast-manager', name: 'Podcast', icon: 'M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z M19 10v2a7 7 0 01-14 0v-2 M12 19v4 M8 23h8' }
+    { type: 'podcast-producer', name: 'Podcast', icon: 'M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z M19 10v2a7 7 0 01-14 0v-2 M12 19v4 M8 23h8' }
   ];
 
   return (
@@ -147,7 +146,6 @@ const App: React.FC = () => {
             >
               {win.type === 'idea-log' && <IdeaLog onIdeaDigested={handleIdeaDigested} />}
               {win.type === 'content-lab' && <ContentLab />}
-              {win.type === 'chatbot' && <ChatBot />}
               {win.type === 'settings' && <Settings />}
               {win.type === 'idea-detail' && <IdeaDetail idea={win.data} />}
               {win.type === 'library' && (
@@ -155,7 +153,29 @@ const App: React.FC = () => {
                   onSelectIdea={(idea) => openApp('idea-detail', `Asset: ${idea.content.substring(0, 15)}...`, idea, window.innerWidth - 560, 100)}
                 />
               )}
-              {win.type === 'podcast-manager' && <PodcastManager onClose={() => closeWindow(win.id)} />}
+              {win.type === 'podcast-producer' && (
+                <PodcastProducer
+                  onClose={() => closeWindow(win.id)}
+                  onSaved={() => openApp('podcast-library', 'Podcast Vault', null, window.innerWidth - 900, 100)}
+                />
+              )}
+              {win.type === 'podcast-library' && (
+                <PodcastLibrary
+                  onSelectEpisode={(ep) => openApp('podcast-detail', `Ep ${ep.episodeNumber}: ${ep.title.substring(0, 20)}...`, ep, window.innerWidth - 600, 100)}
+                />
+              )}
+              {win.type === 'podcast-detail' && (
+                <PodcastDetail
+                  episode={win.data}
+                  onViewTranscript={() => openApp('podcast-transcript', `Transcript: Ep ${win.data.episodeNumber}`, { title: win.data.title, transcript: win.data.transcriptText }, window.innerWidth - 800, 50)}
+                />
+              )}
+              {win.type === 'podcast-transcript' && (
+                <PodcastTranscript
+                  title={win.data.title}
+                  transcript={win.data.transcript}
+                />
+              )}
             </Window>
           ))}
         </div>

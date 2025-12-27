@@ -1,5 +1,5 @@
 
-export type AppType = 'idea-log' | 'content-lab' | 'chatbot' | 'settings' | 'idea-detail' | 'library' | 'podcast-manager';
+export type AppType = 'idea-log' | 'content-lab' | 'settings' | 'idea-detail' | 'library' | 'podcast-producer' | 'podcast-library' | 'podcast-detail' | 'podcast-transcript';
 
 export interface WindowState {
   id: string;
