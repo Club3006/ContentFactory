@@ -1,0 +1,11 @@
+
+{
+  "name": "Content Factory PRO | Orbital",
+  "description": "Spatial content generation workstation with neural ingestion, multi-identity calibration, and visual synthesis.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "version": "1.2.0",
+  "theme_color": "#020617"
+}
