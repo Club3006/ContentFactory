@@ -3,9 +3,17 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { UserPersona, FeedbackRating } from "../types";
 
 const getAI = () => {
-  const apiKey = process.env.API_KEY || '';
+  // Support both old process.env and new import.meta.env patterns
+  // Vite config now maps these from .env.local
+  const apiKey = 
+    import.meta.env.VITE_API_KEY || 
+    import.meta.env.VITE_GEMINI_API_KEY || 
+    (typeof process !== 'undefined' && process.env?.API_KEY) ||
+    (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ||
+    '';
+    
   if (!apiKey) {
-    console.warn("WARNING: No API Key detected. Ensure GEMINI_API_KEY or API_KEY is set in your .env.local file.");
+    console.warn("WARNING: No Gemini API Key detected. Please ensure API_KEY or GEMINI_API_KEY is set in your .env.local file.");
   }
   return new GoogleGenerativeAI(apiKey);
 };
@@ -18,42 +26,17 @@ export const scrapeAndTranscribe = async (url: string): Promise<string> => {
     ? `Analyze this social media URL: ${url}. Use Google Search to find the post caption, the creator's name, the date, and any significant context. Provide a comprehensive "transcript" of the post's content and its visual description if possible.`
     : `Please use search to find the full content of this URL: ${url}. Provide a detailed transcript or summary of the article or page, focusing on key facts, figures, and the author's main arguments.`;
 
-  // Helper to attempt generation with a specific config
-  const attemptGen = async (modelName: string, tools: any[] | undefined) => {
-    console.log(`Attempting ingestion with model: ${modelName}, tools: ${!!tools}`);
-    const model = genAI.getGenerativeModel({ model: modelName, tools });
-    const result = await model.generateContent(promptText);
-    return result.response;
-  };
-
   try {
-    let response;
-
-    // Strategy 1: gemini-1.5-flash with standard googleSearch (most stable)
-    try {
-      response = await attemptGen('gemini-1.5-flash', [{ googleSearch: {} } as any]);
-    } catch (e) {
-      console.warn('Strategy 1 failed:', e);
-      // Strategy 2: gemini-1.5-flash-002 (specific version)
-      try {
-        response = await attemptGen('gemini-1.5-flash-002', [{ googleSearch: {} } as any]);
-      } catch (e2) {
-        console.warn('Strategy 2 failed:', e2);
-        // Strategy 3: gemini-2.0-flash-exp (experimental, robust connectivity but specific tool needs)
-        // Using no tools as a last resort fallback to at least get a simulated response is better than a crash
-        // But we prefer tools.
-        try {
-          // Try experimental Dynamic Retrieval tool syntax
-          response = await attemptGen('gemini-2.0-flash-exp', [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: "mode_dynamic", dynamicThreshold: 0.6 } } } as any]);
-        } catch (e3) {
-          console.warn('Strategy 3 failed:', e3);
-          // FINAL ATTEMPT: No tools, just raw analysis (might hallucinate but keeps app alive)
-          response = await attemptGen('gemini-1.5-flash', undefined);
-        }
-      }
-    }
-
-    if (!response) throw new Error("All ingestion strategies exhausted.");
+    // Use gemini-2.0-flash-exp with google_search tool (the correct syntax for this model)
+    console.log(`Attempting URL ingestion with gemini-2.0-flash-exp + google_search for: ${url}`);
+    
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
+      tools: [{ google_search: {} } as any]
+    });
+    
+    const result = await model.generateContent(promptText);
+    const response = result.response;
 
     const text = response.text();
     const grounding = response.candidates?.[0]?.groundingMetadata;
@@ -65,7 +48,21 @@ export const scrapeAndTranscribe = async (url: string): Promise<string> => {
     return text + sourceList;
   } catch (error) {
     console.error("Gemini Scrape Error:", error);
-    throw new Error("The content engine failed to reach the target URL. Error: " + (error as Error).message);
+    
+    // Fallback: Try without tools (may not have grounding but won't crash)
+    try {
+      console.log('Attempting fallback without tools...');
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const fallbackPrompt = `Based on your knowledge, provide information about this URL: ${url}. 
+      If this is an article, summarize the key points. If it's a video or podcast, describe what you know about its content.
+      Be clear that this is based on available knowledge and may not reflect the exact current content.`;
+      
+      const result = await model.generateContent(fallbackPrompt);
+      return result.response.text() + "\n\n[Note: Content retrieved from AI knowledge base, not live URL scraping]";
+    } catch (fallbackError) {
+      console.error("Fallback also failed:", fallbackError);
+      throw new Error("The content engine failed to reach the target URL. Error: " + (error as Error).message);
+    }
   }
 };
 
@@ -93,22 +90,15 @@ export const rewriteContent = async (
     Instructions: Rewrite for the platform strictly adhering to the tone and facts.
   `;
 
-  // Fallback chain for rewrite as well
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-    const result = await model.generateContent(promptText);
-    return result.response.text();
-  } catch (e) {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const result = await model.generateContent(promptText);
-    return result.response.text();
-  }
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+  const result = await model.generateContent(promptText);
+  return result.response.text();
 };
 
 export const parseQuestionnaire = async (fileContent: string): Promise<Partial<UserPersona>> => {
   const genAI = getAI();
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash', // Using flash for speed/reliability on JSON
+    model: 'gemini-2.0-flash-exp',
     generationConfig: {
       responseMimeType: "application/json"
     }
@@ -149,7 +139,7 @@ export const refineContent = async (
     Instructions: Update the current draft based on the user feedback. Maintain the core identity.
   `;
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
   const result = await model.generateContent(promptText);
   return result.response.text();
 };
@@ -165,7 +155,7 @@ export const refineVisual = async (originalPrompt: string, feedback: string, asp
 export const chatAssistant = async (history: { role: 'user' | 'model', parts: { text: string }[] }[]): Promise<string> => {
   const genAI = getAI();
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash-exp',
     systemInstruction: "You are a helpful creative assistant in a high-end modern content workstation."
   });
 
@@ -306,6 +296,81 @@ export const extractNotableQuotes = async (
   return result.response.text();
 };
 
+/**
+ * Extract quotes with speaker attribution using CopyPro intelligence
+ * Returns structured data for rating and learning
+ */
+export const extractQuotesWithSpeakers = async (
+  transcript: string,
+  guest?: string
+): Promise<{ text: string; speaker: string; timestamp?: string }[]> => {
+  const genAI = getAI();
+  const model = genAI.getGenerativeModel({ 
+    model: 'gemini-2.0-flash-exp',
+    generationConfig: {
+      responseMimeType: "application/json"
+    }
+  });
+
+  const prompt = `
+    QUOTE EXTRACTION WITH COPYPRO INTELLIGENCE
+
+    You are CopyPro, an institutional-grade content strategist. Analyze this podcast transcript and extract the 3 BEST quotes for content repurposing.
+
+    COPYPRO SELECTION CRITERIA:
+    - Quotes must be SPECIFIC, not generic advice
+    - Prioritize data-backed or experience-based statements
+    - Look for contrarian or counterintuitive insights
+    - Select quotes that could standalone as social media hooks
+    - Avoid motivational fluff or obvious statements
+    - Prefer quotes with concrete examples or numbers
+
+    VALUE DENSITY CHECK:
+    - Would a serious professional save this quote?
+    - Does it teach, clarify, or reframe something real?
+    - Is the idea unmistakably clear?
+
+    ${guest ? `Known Guest: ${guest}` : ''}
+
+    TRANSCRIPT:
+    ${transcript.slice(0, 10000)}
+
+    EXTRACTION RULES:
+    1. Extract the EXACT quote as spoken (clean up filler words)
+    2. Identify the SPEAKER from the transcript context
+    3. Include the TIMESTAMP if visible in format like "[00:12]" or "(00:12)"
+    4. Keep quotes between 1-3 sentences
+    5. Each quote must be self-contained and impactful
+
+    Return a JSON array with exactly 3 quotes:
+    [
+      {
+        "text": "The exact quote text here",
+        "speaker": "Speaker Name",
+        "timestamp": "00:12"
+      },
+      ...
+    ]
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    
+    // Parse JSON response
+    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const quotes = JSON.parse(jsonMatch[0]);
+      return quotes.slice(0, 3); // Ensure max 3 quotes
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Failed to extract quotes:', error);
+    return [];
+  }
+};
+
 export const synthesizeContent = async (
   seedQuote: string,
   contextSources: string,
@@ -392,4 +457,49 @@ export const synthesizeContent = async (
 
   const result = await model.generateContent(prompt);
   return result.response.text();
+};
+
+/**
+ * Extract text content from a PDF using Gemini Vision API
+ * @param base64Data - The PDF file as a base64 data URL
+ * @param filename - The original filename (for logging)
+ * @returns Extracted text content from the PDF
+ */
+export const extractPdfContent = async (base64Data: string, filename: string): Promise<string> => {
+  const genAI = getAI();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+  
+  console.log(`[Gemini] Extracting PDF content: ${filename}`);
+  
+  try {
+    // Remove the data URL prefix to get raw base64
+    const base64Content = base64Data.replace(/^data:application\/pdf;base64,/, '');
+    
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: 'application/pdf',
+          data: base64Content
+        }
+      },
+      `Extract all text content from this PDF document. 
+       
+       Requirements:
+       - Preserve the structure and formatting as much as possible
+       - Include all headings, paragraphs, bullet points, and tables
+       - Extract any numerical data, statistics, or figures mentioned
+       - If there are charts or graphs, describe what data they show
+       - Return ONLY the extracted text content, no commentary
+       
+       Begin extraction:`
+    ]);
+    
+    const extractedText = result.response.text();
+    console.log(`[Gemini] PDF extraction complete: ${extractedText.length} chars from ${filename}`);
+    
+    return extractedText;
+  } catch (error) {
+    console.error(`[Gemini] PDF extraction failed for ${filename}:`, error);
+    throw new Error(`Failed to extract PDF content: ${(error as Error).message}`);
+  }
 };

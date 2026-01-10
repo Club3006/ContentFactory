@@ -2,10 +2,19 @@
 // Browser-compatible Apify Service using Fetch API
 // Removing apify-client as it depends on Node.js 'events' module
 
-const APIFY_TOKEN = process.env.APIFY_API_TOKEN || '';
-if (!APIFY_TOKEN && import.meta.env.MODE === 'development') {
+// Support both old process.env and new import.meta.env patterns
+// Vite config maps these from .env.local
+const getApifyToken = (): string => {
+  const token = 
+    import.meta.env.VITE_APIFY_API_TOKEN || 
+    (typeof process !== 'undefined' && process.env?.APIFY_API_TOKEN) ||
+    '';
+    
+  if (!token) {
     console.warn("Missing APIFY_API_TOKEN. Please set it in .env.local");
-}
+  }
+  return token;
+};
 
 export interface TranscriptResult {
     url: string;
@@ -32,6 +41,11 @@ export const fetchTranscript = async (url: string): Promise<TranscriptResult> =>
     const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
     // Choose actor based on content type
+    const APIFY_TOKEN = getApifyToken();
+    if (!APIFY_TOKEN) {
+        throw new Error("Apify API token not configured. Please set VITE_APIFY_API_TOKEN in .env.local");
+    }
+    
     const actorId = isYouTube ? 'streampot~youtube-transcript-scraper' : 'apify~website-content-crawler';
     const apiUrl = `/apify-proxy/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}&waitForFinish=120`;
 
@@ -84,8 +98,8 @@ export const fetchTranscript = async (url: string): Promise<TranscriptResult> =>
 
         console.log(`[Apify] Run Succeeded. Fetching dataset ${datasetId}...`);
 
-        // Fetch Dataset
-        const datasetUrl = `/apify-proxy/v2/datasets/${datasetId}/items?token=${APIFY_TOKEN}`;
+        // Fetch Dataset (reuse token from closure)
+        const datasetUrl = `/apify-proxy/v2/datasets/${datasetId}/items?token=${getApifyToken()}`;
         const datasetResponse = await fetch(datasetUrl);
 
         if (!datasetResponse.ok) {
