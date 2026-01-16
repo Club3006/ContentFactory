@@ -1,155 +1,69 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { VaultItem, VaultItemType } from '../types';
-import { Trash2 } from 'lucide-react';
+/**
+ * KanbanCard Component
+ * 
+ * Visual card representation for ideas in the Vault/Library
+ * Shows: Title, File Types, Date, IDEA label
+ */
 
-interface Props {
-  item: VaultItem;
-  onOpen: (item: VaultItem) => void;
-  onDelete: (item: VaultItem) => void;
+import React from 'react';
+import { ContentIdea } from '../types';
+
+interface KanbanCardProps {
+  idea: ContentIdea;
+  onClick?: () => void;
 }
 
-const TYPE_COLORS: Record<VaultItemType, { border: string; bg: string; badge: string }> = {
-  idea: {
-    border: 'border-blue-500/50',
-    bg: 'bg-blue-500/10',
-    badge: 'bg-blue-500/20 text-blue-400'
-  },
-  podcast: {
-    border: 'border-emerald-500/50',
-    bg: 'bg-emerald-500/10',
-    badge: 'bg-emerald-500/20 text-emerald-400'
-  },
-  generator: {
-    border: 'border-purple-500/50',
-    bg: 'bg-purple-500/10',
-    badge: 'bg-purple-500/20 text-purple-400'
-  },
-  linkedin: {
-    border: 'border-[#0077B5]/50',
-    bg: 'bg-[#0077B5]/10',
-    badge: 'bg-[#0077B5]/20 text-[#0077B5]'
-  }
-};
-
-const TYPE_LABELS: Record<VaultItemType, string> = {
-  idea: 'Idea',
-  podcast: 'Podcast',
-  generator: 'Generator',
-  linkedin: 'LinkedIn'
-};
-
-export const KanbanCard: React.FC<Props> = ({ item, onOpen, onDelete }) => {
-  const [showDelete, setShowDelete] = useState(false);
-  const pressTimer = useRef<NodeJS.Timeout | null>(null);
-  const isLongPress = useRef(false);
-
-  const colors = TYPE_COLORS[item.type];
-
-  const handlePointerDown = () => {
-    isLongPress.current = false;
-    pressTimer.current = setTimeout(() => {
-      isLongPress.current = true;
-      setShowDelete(true);
-    }, 600);
+export const KanbanCard: React.FC<KanbanCardProps> = ({ idea, onClick }) => {
+  // Generate 5-word title from content or transcript
+  const generateTitle = (text: string): string => {
+    const words = text.trim().split(/\s+/).slice(0, 5);
+    return words.join(' ') + (text.split(/\s+/).length > 5 ? '...' : '');
   };
 
-  const handlePointerUp = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-  };
-
-  const handlePointerLeave = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-  };
-
-  const handleClick = () => {
-    // Only open if it wasn't a long press and delete isn't showing
-    if (!isLongPress.current && !showDelete) {
-      onOpen(item);
-    }
-    // Reset long press flag after click
-    isLongPress.current = false;
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete(item);
-    setShowDelete(false);
-  };
-
-  // Hide delete after timeout
-  useEffect(() => {
-    if (showDelete) {
-      const timer = setTimeout(() => setShowDelete(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showDelete]);
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
+  const title = generateTitle(idea.content || idea.transcript || 'Untitled Idea');
+  const dateStr = new Date(idea.createdAt || idea.timestamp).toLocaleDateString('en-US', { 
+    month: 'numeric',
+    day: 'numeric',
+    year: '2-digit'
+  });
 
   return (
     <div
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerLeave}
-      onClick={handleClick}
-      className={`relative p-4 rounded-lg border ${colors.border} ${colors.bg} hover:shadow-lg transition-all cursor-pointer group active:scale-[0.98] select-none`}
+      onClick={onClick}
+      className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 hover:border-blue-500/50 hover:bg-slate-900/70 transition-all cursor-pointer group relative overflow-hidden"
     >
-      {/* Delete button overlay */}
-      {showDelete && (
-        <div 
-          className="absolute inset-0 bg-red-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center z-10 animate-in fade-in duration-200"
-          onClick={handleDeleteClick}
-        >
-          <button className="p-3 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors shadow-lg">
-            <Trash2 size={20} />
-          </button>
-        </div>
-      )}
-
-      {/* Header with type badge and date */}
-      <div className="flex items-center justify-between mb-2">
-        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${colors.badge}`}>
-          {TYPE_LABELS[item.type]}
-          {item.contentType && <span className="opacity-70"> • {item.contentType}</span>}
-        </span>
-        <span className="text-[9px] text-slate-400">
-          {formatDate(item.updatedAt)}
-        </span>
+      {/* IDEA Label (Top Right) */}
+      <div className="absolute top-3 right-3 bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
+        IDEA
       </div>
 
       {/* Title */}
-      <h4 className="text-xs font-bold text-white leading-relaxed line-clamp-2 group-hover:text-white/90 transition-colors">
-        {item.title || 'Untitled'}
-      </h4>
+      <h3 className="text-sm font-bold text-slate-200 mb-3 pr-12 leading-snug">
+        {title}
+      </h3>
 
-      {/* Subtitle / Status */}
-      {(item.subtitle || item.status) && (
-        <div className="mt-2 pt-2 border-t border-white/5">
-          <span className="text-[10px] text-white/80">
-            {item.subtitle || item.status}
-          </span>
+      {/* Mini TallyTable (File Types) */}
+      {idea.fileTypes && idea.fileTypes.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {idea.fileTypes.map((type, idx) => (
+            <span
+              key={idx}
+              className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider"
+            >
+              {type}
+            </span>
+          ))}
         </div>
       )}
 
-      {/* Long press hint */}
-      <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-30 transition-opacity">
-        <span className="text-[7px] text-slate-600 uppercase">Hold to delete</span>
+      {/* Date - 90% white */}
+      <div className="pt-2 border-t border-slate-800">
+        <span className="text-[9px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+          Saved {dateStr}
+        </span>
       </div>
     </div>
   );
 };
+
+export default KanbanCard;

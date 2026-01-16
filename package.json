@@ -9,13 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^1.34.0",
     "@google/generative-ai": "^0.24.1",
     "apify-client": "^2.21.0",
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",
+    "elastic-scroll-polyfill": "^2.1.0",
     "firebase": "^12.7.0",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",
+    "precision-inputs": "^1.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "rss-parser": "^3.13.0"

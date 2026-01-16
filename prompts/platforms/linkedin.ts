@@ -245,3 +245,4 @@ export default {
   getDoctrine: getLinkedInDoctrine
 };
 
+
