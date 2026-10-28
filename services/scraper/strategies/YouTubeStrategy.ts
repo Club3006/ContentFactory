@@ -17,15 +17,12 @@ export class YouTubeStrategy implements ScraperStrategy {
 
     async scrape(input: string): Promise<ScrapeResult> {
         const url = input;
-        const actorId = 'streampot~youtube-transcript-scraper';
+        const actorId = 'shephouse~youtube-transcript-scraper-bulk';
         // Add waitForFinish
         const apiUrl = `/apify-proxy/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}&waitForFinish=120`;
 
-        // valid input for streampot/youtube-transcript-scraper is often just 'input' or 'videoId' or 'url'
-        // based on search results, 'videoUrl' is likely, but let's try to be robust.
-        // Many Apify actors take 'startUrls' or 'videoUrl'.
-        // Let's assume 'videoUrl' is the key based on common patterns for this specific actor type.
-        const runInput = { videoUrl: url };
+        // streampot/youtube-transcript-scraper was removed from Apify (404).
+        const runInput = { startUrls: [{ url }], maxTranscripts: 1 };
 
         console.log(`[YouTubeStrategy] Starting run for ${url} with input:`, runInput);
 
@@ -57,6 +54,9 @@ export class YouTubeStrategy implements ScraperStrategy {
         if (!items || items.length === 0) throw new Error("No transcript found.");
 
         const item = items[0];
+        if (item.status && item.status !== 'OK') {
+            throw new Error(`YouTube transcript unavailable: ${item.status}${item.error ? ` - ${item.error}` : ''}`);
+        }
         // Combine text if multiple segments or just take text
         const textContent = item.text || item.transcript || "";
 
@@ -67,8 +67,8 @@ export class YouTubeStrategy implements ScraperStrategy {
             contentType: 'video',
             metadata: {
                 thumbnail: item.thumbnailUrl,
-                duration: item.duration,
-                channel: item.channelName
+                duration: item.lengthSeconds ? Number(item.lengthSeconds) : item.duration,
+                channel: item.channel || item.channelName
             }
         };
     }
