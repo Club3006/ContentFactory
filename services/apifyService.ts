@@ -46,12 +46,13 @@ export const fetchTranscript = async (url: string): Promise<TranscriptResult> =>
         throw new Error("Apify API token not configured. Please set VITE_APIFY_API_TOKEN in .env.local");
     }
     
-    const actorId = isYouTube ? 'streampot~youtube-transcript-scraper' : 'apify~website-content-crawler';
+    const actorId = isYouTube ? 'shephouse~youtube-transcript-scraper-bulk' : 'apify~website-content-crawler';
     const apiUrl = `/apify-proxy/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}&waitForFinish=120`;
 
     let input: any;
     if (isYouTube) {
-        input = { videoUrl: url };
+        // streampot/youtube-transcript-scraper was removed from Apify (404).
+        input = { startUrls: [{ url }], maxTranscripts: 1 };
     } else {
         input = {
             startUrls: [{ url }],
@@ -119,9 +120,13 @@ export const fetchTranscript = async (url: string): Promise<TranscriptResult> =>
         let author = "";
 
         if (isYouTube) {
+            if (Item.status && Item.status !== 'OK') {
+                // Failed videos come back as { status: 'FAILED', errorCode, errorMessage } (not charged)
+                throw new Error(`YouTube transcript unavailable (${Item.errorCode || Item.status}): ${Item.errorMessage || 'no transcript returned'}`);
+            }
             textContent = Item.text || Item.transcript || "";
             title = Item.title || "";
-            author = Item.channelName || "";
+            author = Item.channel || Item.channelName || "";
         } else {
             textContent = Item.markdown || Item.text || "";
             title = Item.metadata?.title || "";

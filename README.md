@@ -19,7 +19,8 @@ A high-performance content generation engine inspired by 1990s MacOS aesthetics.
 ## Setup
 1. Clone the repository.
 2. Ensure `process.env.API_KEY` is configured with a valid Google Gemini API Key.
-3. Open `index.html` in a modern browser.
+3. (Optional, for YouTube/web sources) Set `VITE_APIFY_API_TOKEN` in `.env.local`. YouTube transcripts use the Apify Actor `shephouse/youtube-transcript-scraper-bulk`; videos without captions return a clear error and are not charged.
+4. Open `index.html` in a modern browser.
 
 ## Data Persistence
 All data is stored in the browser's `localStorage`. Use the "Export Neural State" feature in Settings to download backups of your vault and identities.
