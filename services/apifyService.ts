@@ -121,7 +121,8 @@ export const fetchTranscript = async (url: string): Promise<TranscriptResult> =>
 
         if (isYouTube) {
             if (Item.status && Item.status !== 'OK') {
-                throw new Error(`YouTube transcript unavailable: ${Item.status}${Item.error ? ` - ${Item.error}` : ''}`);
+                // Failed videos come back as { status: 'FAILED', errorCode, errorMessage } (not charged)
+                throw new Error(`YouTube transcript unavailable (${Item.errorCode || Item.status}): ${Item.errorMessage || 'no transcript returned'}`);
             }
             textContent = Item.text || Item.transcript || "";
             title = Item.title || "";

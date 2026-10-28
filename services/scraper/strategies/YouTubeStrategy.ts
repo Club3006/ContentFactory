@@ -17,6 +17,9 @@ export class YouTubeStrategy implements ScraperStrategy {
 
     async scrape(input: string): Promise<ScrapeResult> {
         const url = input;
+        if (!APIFY_TOKEN) {
+            throw new Error("Apify API token not configured. Please set VITE_APIFY_API_TOKEN in .env.local");
+        }
         const actorId = 'shephouse~youtube-transcript-scraper-bulk';
         // Add waitForFinish
         const apiUrl = `/apify-proxy/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}&waitForFinish=120`;
@@ -55,7 +58,8 @@ export class YouTubeStrategy implements ScraperStrategy {
 
         const item = items[0];
         if (item.status && item.status !== 'OK') {
-            throw new Error(`YouTube transcript unavailable: ${item.status}${item.error ? ` - ${item.error}` : ''}`);
+            // Failed videos come back as { status: 'FAILED', errorCode, errorMessage } (not charged)
+            throw new Error(`YouTube transcript unavailable (${item.errorCode || item.status}): ${item.errorMessage || 'no transcript returned'}`);
         }
         // Combine text if multiple segments or just take text
         const textContent = item.text || item.transcript || "";
