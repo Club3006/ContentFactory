@@ -46,12 +46,12 @@ export const fetchTranscript = async (url: string): Promise<TranscriptResult> =>
         throw new Error("Apify API token not configured. Please set VITE_APIFY_API_TOKEN in .env.local");
     }
     
-    const actorId = isYouTube ? 'streampot~youtube-transcript-scraper' : 'apify~website-content-crawler';
+    const actorId = isYouTube ? 'johnvc~YoutubeTranscripts' : 'apify~website-content-crawler';
     const apiUrl = `/apify-proxy/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}&waitForFinish=120`;
 
     let input: any;
     if (isYouTube) {
-        input = { videoUrl: url };
+        input = { youtube_url: url, output_formats: ['text'] };
     } else {
         input = {
             startUrls: [{ url }],
@@ -121,7 +121,7 @@ export const fetchTranscript = async (url: string): Promise<TranscriptResult> =>
         if (isYouTube) {
             textContent = Item.text || Item.transcript || "";
             title = Item.title || "";
-            author = Item.channelName || "";
+            author = Item.channel_name || Item.channelName || "";
         } else {
             textContent = Item.markdown || Item.text || "";
             title = Item.metadata?.title || "";
