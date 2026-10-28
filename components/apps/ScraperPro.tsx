@@ -384,7 +384,7 @@ export const ScraperPro: React.FC<ScraperProProps> = ({ onComplete }) => {
 
     if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
       actorId = getActorForTask('YT__Transcript_Fast');
-      runInput = { videoUrl: url };
+      runInput = { youtube_url: url, output_formats: ['text'] };
     } else if (hostname.includes('instagram.com')) {
       actorId = getActorForTask('IG__Post_Reel_Caption');
       runInput = { directUrls: [url], resultsType: 'posts', searchLimit: 1 };

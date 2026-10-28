@@ -116,7 +116,7 @@ export function getActorForTask(taskId: ScraperProTaskId): string {
     'DOC__Parse_Docling': 'vancura/docling',
     'DOC__OCR_PDF': 'cspnair/pdf-ocr-api',
     'MEDIA__Transcribe_Whisper': 'vittuhy/audio-and-video-transcript',
-    'YT__Transcript_Fast': 'streamPot/youtube-transcript-scraper',
+    'YT__Transcript_Fast': 'johnvc/YoutubeTranscripts',
     'LI__Profile': 'katerinahub/linkedin-profile-scraper',
     'LI__Post_Text': 'katerinahub/linkedin-post-scraper',
     'LI__Article_Text': 'apify/website-content-crawler'

@@ -17,15 +17,12 @@ export class YouTubeStrategy implements ScraperStrategy {
 
     async scrape(input: string): Promise<ScrapeResult> {
         const url = input;
-        const actorId = 'streampot~youtube-transcript-scraper';
+        const actorId = 'johnvc~YoutubeTranscripts';
         // Add waitForFinish
         const apiUrl = `/apify-proxy/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}&waitForFinish=120`;
 
-        // valid input for streampot/youtube-transcript-scraper is often just 'input' or 'videoId' or 'url'
-        // based on search results, 'videoUrl' is likely, but let's try to be robust.
-        // Many Apify actors take 'startUrls' or 'videoUrl'.
-        // Let's assume 'videoUrl' is the key based on common patterns for this specific actor type.
-        const runInput = { videoUrl: url };
+        // johnvc/YoutubeTranscripts takes 'youtube_url'; 'text' adds the plain transcript as item.text
+        const runInput = { youtube_url: url, output_formats: ['text'] };
 
         console.log(`[YouTubeStrategy] Starting run for ${url} with input:`, runInput);
 
@@ -68,7 +65,7 @@ export class YouTubeStrategy implements ScraperStrategy {
             metadata: {
                 thumbnail: item.thumbnailUrl,
                 duration: item.duration,
-                channel: item.channelName
+                channel: item.channel_name || item.channelName
             }
         };
     }
